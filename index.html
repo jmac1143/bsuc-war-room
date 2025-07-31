@@ -65,6 +65,8 @@
     td { background-color: #162636; color: #F5F1EB; cursor: pointer; }
     td:focus { outline: none; background-color: #1F3751; }
 
+    td.highlighted { border: 2px solid #C79A5B; }
+
     .status-panel {
       width: 250px;
       background-color: #162636;
@@ -74,10 +76,13 @@
       justify-content: flex-start;
     }
     .status-panel .panel { border-bottom: 3px solid #C79A5B; padding: 20px; text-align: center; }
-    .panel.pick-in { background-color: #A22D2E; font-size: 1.5rem; font-weight: bold; color: #F5F1EB; }
+    .panel.pick-in { background-color: #A22D2E; font-size: 1.5rem; font-weight: bold; color: #F5F1EB; transition: background-color 0.3s; }
     .panel.on-clock { background-color: #C79A5B; color: #162636; font-weight: bold; }
 
     footer { margin-top: 20px; color: #C79A5B; font-size: 1.2rem; text-align: center; }
+
+    .controls { margin: 10px 0; text-align: center; }
+    .controls button { margin: 5px; padding: 10px 15px; background-color: #C79A5B; border: none; color: #162636; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -106,6 +111,10 @@
       <div class="panel on-clock" id="onClock">On the Clock: Team 1</div>
       <div class="panel pick-in" id="pickIn">Pick is In!</div>
       <div class="panel" id="lastPick">Last Pick: None</div>
+      <div class="controls">
+        <button id="prevBtn">Previous Pick</button>
+        <button id="nextBtn">Next Pick</button>
+      </div>
     </div>
   </div>
 
@@ -118,6 +127,7 @@
     const theadRow = document.querySelector('#draftBoard thead tr');
     const draftOrderList = document.getElementById('draftOrderList');
 
+    // Generate header and draft order
     for (let t = 1; t <= teams; t++) {
       const th = document.createElement('th');
       th.textContent = `Team ${t}`;
@@ -129,6 +139,7 @@
       draftOrderList.appendChild(li);
     }
 
+    // Generate grid
     for (let r = 1; r <= rounds; r++) {
       const row = document.createElement('tr');
       const roundCell = document.createElement('td');
@@ -147,10 +158,7 @@
         cell.addEventListener('blur', () => {
           localStorage.setItem(`pick_${r}_${t}`, cell.textContent);
           document.getElementById('lastPick').textContent = `Last Pick: ${cell.textContent} (Team ${t})`;
-          document.getElementById('pickIn').style.backgroundColor = '#C79A5B';
-          setTimeout(()=>{
-            document.getElementById('pickIn').style.backgroundColor = '#A22D2E';
-          },1500);
+          flashPickIn();
         });
 
         row.appendChild(cell);
@@ -159,12 +167,36 @@
     }
 
     let currentTeam = 1;
-    setInterval(() => {
-      draftOrderList.querySelectorAll('li').forEach(li => li.classList.remove('on-clock'));
-      draftOrderList.querySelectorAll('li')[currentTeam-1].classList.add('on-clock');
-      document.getElementById('onClock').textContent = `On the Clock: Team ${currentTeam}`;
+
+    function highlightTeam(teamNum) {
+      // Clear previous highlights
+      document.querySelectorAll('td').forEach(td => td.classList.remove('highlighted'));
+      document.querySelectorAll(`#draftBoard td[data-team='${teamNum}']`).forEach(td => td.classList.add('highlighted'));
+      document.querySelectorAll('#draftOrderList li').forEach(li => li.classList.remove('on-clock'));
+      draftOrderList.querySelectorAll('li')[teamNum-1].classList.add('on-clock');
+      document.getElementById('onClock').textContent = `On the Clock: Team ${teamNum}`;
+    }
+
+    function flashPickIn() {
+      const panel = document.getElementById('pickIn');
+      panel.style.backgroundColor = '#C79A5B';
+      setTimeout(() => {
+        panel.style.backgroundColor = '#A22D2E';
+      }, 1500);
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
       currentTeam = currentTeam % teams + 1;
-    }, 5000);
+      highlightTeam(currentTeam);
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      currentTeam = (currentTeam - 2 + teams) % teams + 1;
+      highlightTeam(currentTeam);
+    });
+
+    // Initialize first highlight
+    highlightTeam(currentTeam);
   </script>
 </body>
 </html>
