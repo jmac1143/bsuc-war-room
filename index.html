@@ -59,12 +59,10 @@
     table { border-collapse: collapse; border: 3px solid #C79A5B; }
     th, td {
       border: 1px solid #C79A5B; text-align: center;
-      min-width: 120px; height: 40px;
+      min-width: 120px; height: 50px; vertical-align: middle;
     }
     th { background-color: #A22D2E; color: #F5F1EB; font-size: 1rem; position: sticky; top: 0; }
     td { background-color: #162636; color: #F5F1EB; cursor: pointer; }
-    td:focus { outline: none; background-color: #1F3751; }
-
     td.highlighted { border: 2px solid #C79A5B; }
 
     .status-panel {
@@ -90,6 +88,14 @@
     .suggestions { background: white; color: black; max-height: 150px; overflow-y: auto; margin: 0 auto; width: 90%; border: 1px solid #C79A5B; }
     .suggestions div { padding: 5px; cursor: pointer; }
     .suggestions div:hover { background: #eee; }
+
+    /* Position Colors */
+    .QB { background-color: #F28C8C; color: #000; }
+    .RB { background-color: #9BE89B; color: #000; }
+    .WR { background-color: #7DBFF5; color: #000; }
+    .TE { background-color: #C59BFF; color: #000; }
+    .K { background-color: #F5E67C; color: #000; }
+    .DEF { background-color: #C0C0C0; color: #000; }
   </style>
 </head>
 <body>
@@ -141,17 +147,20 @@
     const theadRow = document.querySelector('#draftBoard thead tr');
     const draftOrderList = document.getElementById('draftOrderList');
 
-    // Demo player list (replace with full Top 300)
+    // Sample player data (Name, Pos, Team)
     let players = [
-      "Christian McCaffrey", "Justin Jefferson", "Ja'Marr Chase", "CeeDee Lamb", "Tyreek Hill",
-      "Amon-Ra St. Brown", "Bijan Robinson", "Breece Hall", "Jonathan Taylor", "Travis Kelce",
-      "Saquon Barkley", "Puka Nacua", "Patrick Mahomes", "Josh Allen", "Jalen Hurts",
-      "Garrett Wilson", "Davante Adams", "Lamar Jackson", "A.J. Brown", "Deebo Samuel",
-      "Kyren Williams", "Derrick Henry", "DK Metcalf", "Stefon Diggs", "Tee Higgins",
-      "Mark Andrews", "De'Von Achane", "Kenneth Walker", "Joe Mixon", "Calvin Ridley",
-      "Drake London", "Terry McLaurin", "James Cook", "Najee Harris", "Chris Olave",
-      "Travis Etienne", "George Kittle", "Cooper Kupp", "David Montgomery", "Isiah Pacheco",
-      "DeVonta Smith", "Tony Pollard", "Mike Evans", "Rachaad White", "Michael Pittman Jr."
+      { name: "Christian McCaffrey", pos: "RB", team: "SF" },
+      { name: "Justin Jefferson", pos: "WR", team: "MIN" },
+      { name: "Ja'Marr Chase", pos: "WR", team: "CIN" },
+      { name: "CeeDee Lamb", pos: "WR", team: "DAL" },
+      { name: "Tyreek Hill", pos: "WR", team: "MIA" },
+      { name: "Patrick Mahomes", pos: "QB", team: "KC" },
+      { name: "Josh Allen", pos: "QB", team: "BUF" },
+      { name: "Lamar Jackson", pos: "QB", team: "BAL" },
+      { name: "Travis Kelce", pos: "TE", team: "KC" },
+      { name: "Mark Andrews", pos: "TE", team: "BAL" },
+      { name: "Justin Tucker", pos: "K", team: "BAL" },
+      { name: "49ers D/ST", pos: "DEF", team: "SF" }
     ];
 
     // Build table & draft order
@@ -174,17 +183,11 @@
 
       for (let t = 1; t <= teams; t++) {
         const cell = document.createElement('td');
-        cell.contentEditable = true;
         cell.dataset.round = r;
         cell.dataset.team = t;
 
         const saved = localStorage.getItem(`pick_${r}_${t}`);
-        if (saved) cell.textContent = saved;
-
-        cell.addEventListener('blur', () => {
-          localStorage.setItem(`pick_${r}_${t}`, cell.textContent);
-          updateLastPick(cell.textContent, t);
-        });
+        if (saved) cell.innerHTML = saved;
 
         row.appendChild(cell);
       }
@@ -192,6 +195,7 @@
     }
 
     let currentTeam = 1;
+    highlightTeam(currentTeam);
 
     function highlightTeam(teamNum) {
       document.querySelectorAll('td').forEach(td => td.classList.remove('highlighted'));
@@ -204,9 +208,7 @@
     function flashPickIn() {
       const panel = document.getElementById('pickIn');
       panel.style.backgroundColor = '#C79A5B';
-      setTimeout(() => {
-        panel.style.backgroundColor = '#A22D2E';
-      }, 1500);
+      setTimeout(() => { panel.style.backgroundColor = '#A22D2E'; }, 1500);
     }
 
     function updateLastPick(player, team) {
@@ -227,14 +229,12 @@
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (confirm('Reset all picks?')) {
         document.querySelectorAll('#draftBoard td[data-team]').forEach(td => {
-          td.textContent = '';
+          td.innerHTML = '';
           localStorage.removeItem(`pick_${td.dataset.round}_${td.dataset.team}`);
         });
         document.getElementById('lastPick').textContent = 'Last Pick: None';
       }
     });
-
-    highlightTeam(currentTeam);
 
     // Quick search functionality
     const searchInput = document.getElementById('playerSearch');
@@ -243,24 +243,24 @@
     function showSuggestions(query) {
       suggestions.innerHTML = '';
       if (!query) return;
-      const filtered = players.filter(p => p.toLowerCase().includes(query.toLowerCase()));
+      const filtered = players.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
       filtered.slice(0, 8).forEach(player => {
         const div = document.createElement('div');
-        div.textContent = player;
+        div.textContent = `${player.name} (${player.pos} - ${player.team})`;
         div.addEventListener('click', () => selectPlayer(player));
         suggestions.appendChild(div);
       });
     }
 
     function selectPlayer(player) {
-      const cell = document.querySelector(`#draftBoard td[data-team='${currentTeam}']:empty`);
-      const row = Array.from(document.querySelectorAll(`#draftBoard td[data-team='${currentTeam}']`)).find(td => td.textContent === '');
+      const row = Array.from(document.querySelectorAll(`#draftBoard td[data-team='${currentTeam}']`)).find(td => td.innerHTML === '');
       if (row) {
-        row.textContent = player;
-        localStorage.setItem(`pick_${row.dataset.round}_${row.dataset.team}`, player);
-        updateLastPick(player, currentTeam);
+        row.className = player.pos;
+        row.innerHTML = `${player.name}<br><small>${player.pos} | ${player.team}</small>`;
+        localStorage.setItem(`pick_${row.dataset.round}_${row.dataset.team}`, row.innerHTML);
+        updateLastPick(player.name, currentTeam);
       }
-      players = players.filter(p => p !== player);
+      players = players.filter(p => p.name !== player.name);
       searchInput.value = '';
       suggestions.innerHTML = '';
     }
@@ -270,9 +270,9 @@
       if (e.key === 'Enter' && searchInput.value.trim()) {
         const topSuggestion = suggestions.firstChild;
         if (topSuggestion) {
-          selectPlayer(topSuggestion.textContent);
-        } else {
-          selectPlayer(searchInput.value.trim());
+          const text = topSuggestion.textContent;
+          const found = players.find(p => text.includes(p.name));
+          if (found) selectPlayer(found);
         }
       }
     });
