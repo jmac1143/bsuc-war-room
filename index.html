@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BSUC Draft War Room</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial Black', sans-serif;
+      background-color: #162636;
+      color: #F5F1EB;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      background-color: #162636;
+      color: #F5F1EB;
+      text-align: center;
+      padding: 20px;
+      width: 100%;
+      border-bottom: 5px solid #C79A5B;
+      position: relative;
+    }
+    header img {
+      width: 150px;
+      position: absolute;
+      top: 10px;
+      left: 20px;
+    }
+    header h1 { margin: 0; font-size: 2rem; }
+    header h2 { margin: 5px 0 0 0; font-size: 1rem; color: #C79A5B; }
+
+    .main-container {
+      display: flex;
+      width: 100%;
+      max-width: 1800px;
+      margin-top: 20px;
+    }
+    .draft-order {
+      width: 200px;
+      background-color: #162636;
+      border: 3px solid #C79A5B;
+      margin-right: 10px;
+    }
+    .draft-order h3 {
+      background-color: #A22D2E;
+      margin: 0;
+      text-align: center;
+      padding: 10px;
+      border-bottom: 3px solid #C79A5B;
+    }
+    .draft-order ul { list-style: none; padding: 0; margin: 0; }
+    .draft-order li { padding: 10px; border-bottom: 1px solid #C79A5B; }
+    .draft-order li.on-clock { background-color: #C79A5B; color: #162636; font-weight: bold; }
+
+    .board-container { flex: 1; overflow-x: auto; margin-right: 10px; }
+    table { border-collapse: collapse; border: 3px solid #C79A5B; }
+    th, td {
+      border: 1px solid #C79A5B; text-align: center;
+      min-width: 120px; height: 40px;
+    }
+    th { background-color: #A22D2E; color: #F5F1EB; font-size: 1rem; position: sticky; top: 0; }
+    td { background-color: #162636; color: #F5F1EB; cursor: pointer; }
+    td:focus { outline: none; background-color: #1F3751; }
+
+    .status-panel {
+      width: 250px;
+      background-color: #162636;
+      border: 3px solid #C79A5B;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .status-panel .panel { border-bottom: 3px solid #C79A5B; padding: 20px; text-align: center; }
+    .panel.pick-in { background-color: #A22D2E; font-size: 1.5rem; font-weight: bold; color: #F5F1EB; }
+    .panel.on-clock { background-color: #C79A5B; color: #162636; font-weight: bold; }
+
+    footer { margin-top: 20px; color: #C79A5B; font-size: 1.2rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="busc_logo.jpeg" alt="BSUC Logo" />
+    <h1>Bobby Shawn's Undercover Crooners</h1>
+    <h2>Football is Legacy. Crooning is Life.</h2>
+  </header>
+
+  <div class="main-container">
+    <div class="draft-order">
+      <h3>Draft Order</h3>
+      <ul id="draftOrderList"></ul>
+    </div>
+
+    <div class="board-container">
+      <table id="draftBoard">
+        <thead>
+          <tr><th>Round</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="status-panel">
+      <div class="panel on-clock" id="onClock">On the Clock: Team 1</div>
+      <div class="panel pick-in" id="pickIn">Pick is In!</div>
+      <div class="panel" id="lastPick">Last Pick: None</div>
+    </div>
+  </div>
+
+  <footer>Football is Legacy. Crooning is Life.</footer>
+
+  <script>
+    const teams = 12;
+    const rounds = 16;
+    const tbody = document.querySelector('#draftBoard tbody');
+    const theadRow = document.querySelector('#draftBoard thead tr');
+    const draftOrderList = document.getElementById('draftOrderList');
+
+    for (let t = 1; t <= teams; t++) {
+      const th = document.createElement('th');
+      th.textContent = `Team ${t}`;
+      theadRow.appendChild(th);
+
+      const li = document.createElement('li');
+      li.textContent = `Team ${t}`;
+      if (t === 1) li.classList.add('on-clock');
+      draftOrderList.appendChild(li);
+    }
+
+    for (let r = 1; r <= rounds; r++) {
+      const row = document.createElement('tr');
+      const roundCell = document.createElement('td');
+      roundCell.textContent = r;
+      row.appendChild(roundCell);
+
+      for (let t = 1; t <= teams; t++) {
+        const cell = document.createElement('td');
+        cell.contentEditable = true;
+        cell.dataset.round = r;
+        cell.dataset.team = t;
+
+        const saved = localStorage.getItem(`pick_${r}_${t}`);
+        if (saved) cell.textContent = saved;
+
+        cell.addEventListener('blur', () => {
+          localStorage.setItem(`pick_${r}_${t}`, cell.textContent);
+          document.getElementById('lastPick').textContent = `Last Pick: ${cell.textContent} (Team ${t})`;
+          document.getElementById('pickIn').style.backgroundColor = '#C79A5B';
+          setTimeout(()=>{
+            document.getElementById('pickIn').style.backgroundColor = '#A22D2E';
+          },1500);
+        });
+
+        row.appendChild(cell);
+      }
+      tbody.appendChild(row);
+    }
+
+    let currentTeam = 1;
+    setInterval(() => {
+      draftOrderList.querySelectorAll('li').forEach(li => li.classList.remove('on-clock'));
+      draftOrderList.querySelectorAll('li')[currentTeam-1].classList.add('on-clock');
+      document.getElementById('onClock').textContent = `On the Clock: Team ${currentTeam}`;
+      currentTeam = currentTeam % teams + 1;
+    }, 5000);
+  </script>
+</body>
+</html>
