@@ -68,7 +68,7 @@
     td.highlighted { border: 2px solid #C79A5B; }
 
     .status-panel {
-      width: 250px;
+      width: 300px;
       background-color: #162636;
       border: 3px solid #C79A5B;
       display: flex;
@@ -83,6 +83,13 @@
 
     .controls { margin: 10px 0; text-align: center; }
     .controls button { margin: 5px; padding: 10px 15px; background-color: #C79A5B; border: none; color: #162636; font-weight: bold; cursor: pointer; }
+
+    /* Quick Search */
+    .search-container { padding: 10px; text-align: center; }
+    #playerSearch { width: 90%; padding: 8px; font-size: 1rem; }
+    .suggestions { background: white; color: black; max-height: 150px; overflow-y: auto; margin: 0 auto; width: 90%; border: 1px solid #C79A5B; }
+    .suggestions div { padding: 5px; cursor: pointer; }
+    .suggestions div:hover { background: #eee; }
   </style>
 </head>
 <body>
@@ -111,9 +118,16 @@
       <div class="panel on-clock" id="onClock">On the Clock: Team 1</div>
       <div class="panel pick-in" id="pickIn">Pick is In!</div>
       <div class="panel" id="lastPick">Last Pick: None</div>
+
+      <div class="search-container">
+        <input type="text" id="playerSearch" placeholder="Type player name..." autocomplete="off" />
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+
       <div class="controls">
         <button id="prevBtn">Previous Pick</button>
         <button id="nextBtn">Next Pick</button>
+        <button id="resetBtn">Reset Draft</button>
       </div>
     </div>
   </div>
@@ -127,7 +141,20 @@
     const theadRow = document.querySelector('#draftBoard thead tr');
     const draftOrderList = document.getElementById('draftOrderList');
 
-    // Generate header and draft order
+    // Demo player list (replace with full Top 300)
+    let players = [
+      "Christian McCaffrey", "Justin Jefferson", "Ja'Marr Chase", "CeeDee Lamb", "Tyreek Hill",
+      "Amon-Ra St. Brown", "Bijan Robinson", "Breece Hall", "Jonathan Taylor", "Travis Kelce",
+      "Saquon Barkley", "Puka Nacua", "Patrick Mahomes", "Josh Allen", "Jalen Hurts",
+      "Garrett Wilson", "Davante Adams", "Lamar Jackson", "A.J. Brown", "Deebo Samuel",
+      "Kyren Williams", "Derrick Henry", "DK Metcalf", "Stefon Diggs", "Tee Higgins",
+      "Mark Andrews", "De'Von Achane", "Kenneth Walker", "Joe Mixon", "Calvin Ridley",
+      "Drake London", "Terry McLaurin", "James Cook", "Najee Harris", "Chris Olave",
+      "Travis Etienne", "George Kittle", "Cooper Kupp", "David Montgomery", "Isiah Pacheco",
+      "DeVonta Smith", "Tony Pollard", "Mike Evans", "Rachaad White", "Michael Pittman Jr."
+    ];
+
+    // Build table & draft order
     for (let t = 1; t <= teams; t++) {
       const th = document.createElement('th');
       th.textContent = `Team ${t}`;
@@ -139,7 +166,6 @@
       draftOrderList.appendChild(li);
     }
 
-    // Generate grid
     for (let r = 1; r <= rounds; r++) {
       const row = document.createElement('tr');
       const roundCell = document.createElement('td');
@@ -157,8 +183,7 @@
 
         cell.addEventListener('blur', () => {
           localStorage.setItem(`pick_${r}_${t}`, cell.textContent);
-          document.getElementById('lastPick').textContent = `Last Pick: ${cell.textContent} (Team ${t})`;
-          flashPickIn();
+          updateLastPick(cell.textContent, t);
         });
 
         row.appendChild(cell);
@@ -169,7 +194,6 @@
     let currentTeam = 1;
 
     function highlightTeam(teamNum) {
-      // Clear previous highlights
       document.querySelectorAll('td').forEach(td => td.classList.remove('highlighted'));
       document.querySelectorAll(`#draftBoard td[data-team='${teamNum}']`).forEach(td => td.classList.add('highlighted'));
       document.querySelectorAll('#draftOrderList li').forEach(li => li.classList.remove('on-clock'));
@@ -185,18 +209,73 @@
       }, 1500);
     }
 
+    function updateLastPick(player, team) {
+      if (!player) return;
+      document.getElementById('lastPick').textContent = `Last Pick: ${player} (Team ${team})`;
+      flashPickIn();
+    }
+
+    // Buttons
     document.getElementById('nextBtn').addEventListener('click', () => {
       currentTeam = currentTeam % teams + 1;
       highlightTeam(currentTeam);
     });
-
     document.getElementById('prevBtn').addEventListener('click', () => {
       currentTeam = (currentTeam - 2 + teams) % teams + 1;
       highlightTeam(currentTeam);
     });
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (confirm('Reset all picks?')) {
+        document.querySelectorAll('#draftBoard td[data-team]').forEach(td => {
+          td.textContent = '';
+          localStorage.removeItem(`pick_${td.dataset.round}_${td.dataset.team}`);
+        });
+        document.getElementById('lastPick').textContent = 'Last Pick: None';
+      }
+    });
 
-    // Initialize first highlight
     highlightTeam(currentTeam);
+
+    // Quick search functionality
+    const searchInput = document.getElementById('playerSearch');
+    const suggestions = document.getElementById('suggestions');
+
+    function showSuggestions(query) {
+      suggestions.innerHTML = '';
+      if (!query) return;
+      const filtered = players.filter(p => p.toLowerCase().includes(query.toLowerCase()));
+      filtered.slice(0, 8).forEach(player => {
+        const div = document.createElement('div');
+        div.textContent = player;
+        div.addEventListener('click', () => selectPlayer(player));
+        suggestions.appendChild(div);
+      });
+    }
+
+    function selectPlayer(player) {
+      const cell = document.querySelector(`#draftBoard td[data-team='${currentTeam}']:empty`);
+      const row = Array.from(document.querySelectorAll(`#draftBoard td[data-team='${currentTeam}']`)).find(td => td.textContent === '');
+      if (row) {
+        row.textContent = player;
+        localStorage.setItem(`pick_${row.dataset.round}_${row.dataset.team}`, player);
+        updateLastPick(player, currentTeam);
+      }
+      players = players.filter(p => p !== player);
+      searchInput.value = '';
+      suggestions.innerHTML = '';
+    }
+
+    searchInput.addEventListener('input', () => showSuggestions(searchInput.value));
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && searchInput.value.trim()) {
+        const topSuggestion = suggestions.firstChild;
+        if (topSuggestion) {
+          selectPlayer(topSuggestion.textContent);
+        } else {
+          selectPlayer(searchInput.value.trim());
+        }
+      }
+    });
   </script>
 </body>
 </html>
